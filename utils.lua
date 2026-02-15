@@ -21,8 +21,7 @@ end
 function utils.angleOfVector(vector) -- gets angle of vector (idk why the comment said scale it, prolly VSCode autofill shenanigans)
     return math.atan2(vector.y, vector.x)
 end
-function utils.checkTouch(obj1, obj2)
-    if (obj1) == nil or obj2 == nil then return false end -- false is generally better to return than nil in bool functions because it makes it clearer
+function utils.checkTouch(obj1, obj2) -- basic AABB collision touch i learned from yt
     if not (obj1.x and obj1.y) then                       -- whether i wanted to return that or that was a lookup error
         error("double check obj1 parameter") -- error() halts the program if not wrapped in pcall (powerful but less necessary in local games that dont have to deal with (inherently unreliable) data sending)
     end
@@ -128,3 +127,4 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect) -- obj1 is intend
 end
 
 return utils
+
