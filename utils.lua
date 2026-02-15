@@ -2,6 +2,11 @@
 -- framework - love2d
 -- nobody bothers to reads the comments anyway
 local utils = {}
+function utils.scale(vector, factor) -- scales vector
+    return {
+        vector.x * factor, vector.y*factor
+    }
+end
 function utils.vector(obj1, obj2) -- REMEMBER: object 1 is the initial point and object 2 is the final point, order matters here
     return {x = obj2.x - obj1.x, y = obj2.y - obj1.y}
 end -- vector = magnitude + direction (essentially a glorified line segment that starts from the origin)
@@ -121,6 +126,5 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect) -- obj1 is intend
     end
     return returnTable
 end
-
 
 return utils
