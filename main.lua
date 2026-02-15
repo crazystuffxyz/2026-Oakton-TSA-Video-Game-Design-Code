@@ -57,5 +57,10 @@ function love.draw()
         love.graphics.setFont(fontbutsmaller)
         love.graphics.print("Press Q to build a teleporter entrance, and E to build the exit. \n After a brief cooldown, they will be active! \n Try using them to beat this level! \n \n (Projectiles can only be teleported once)", 500, 300)
     end 
+    love.graphics.setColor(0,0,0)
+    love.graphics.setFond(fontbutsmaller)
+    love.graphics.setColor(1,1,1)
+    love.graphics.print("Deaths: " .. tostring(player.deathCount or 0), 40, 40)
     love.graphics.setColor(1,1,1)
 end
+
