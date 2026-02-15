@@ -4,19 +4,19 @@
 local utils = {}
 function utils.vector(obj1, obj2) -- REMEMBER: object 1 is the initial point and object 2 is the final point, order matters here
     return {x = obj2.x - obj1.x, y = obj2.y - obj1.y}
-end -- vector = magnitude + direction, learned about them while learning with chatgpt during my short lived roblox game dev phase (they appeared alot so i bothered to learn it).. 
+end -- vector = magnitude + direction (essentially a glorified line segment that starts from the origin)
 function utils.magnitude(vector) -- ripoff pythagorean theorem (length of vector)
     return math.sqrt(vector.x^2 + vector.y^2)
 end
-function utils.unitVector(vector) -- turns vector into a vector with magnitude 1
+function utils.unitVector(vector) -- turns vector into a vector with magnitude 1 (the unit vector)
     local magnitude = utils.magnitude(vector)
     if magnitude == 0 then return {x = 0, y = 0} end
     return {x = vector.x / magnitude, y = vector.y / magnitude}
 end
-function utils.angleOfVector(vector) -- multiplies vector by scalar (lengthens or shortens it but keeps direction the same)
+function utils.angleOfVector(vector) -- gets angle of vector (idk why the comment said scale it, prolly VSCode autofill shenanigans)
     return math.atan2(vector.y, vector.x)
 end
-function utils.checkTouch(obj1, obj2)-- whatever got smth useful out of it so yea. also thats the reason why we are using lua in case youre wondering
+function utils.checkTouch(obj1, obj2)
     if (obj1) == nil or obj2 == nil then return false end -- false is generally better to return than nil in bool functions because it makes it clearer
     if not (obj1.x and obj1.y) then                       -- whether i wanted to return that or that was a lookup error
         error("double check obj1 parameter") -- error() halts the program if not wrapped in pcall (powerful but less necessary in local games that dont have to deal with (inherently unreliable) data sending)
@@ -121,5 +121,6 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect) -- obj1 is intend
     end
     return returnTable
 end
+
 
 return utils
