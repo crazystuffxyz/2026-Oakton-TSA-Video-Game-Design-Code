@@ -30,6 +30,7 @@ local player = {
     timeSinceBlast = 0,
     blastHorizontalTerminalVelo = 200,
     blastVerticalTerminalVelo = 355,
+    deathCount = 0,
 }
 local teleporter = require("teleporter")
 local utils = require("utils")
@@ -143,6 +144,7 @@ function player.update(dt)
         end
     end
     if checkTouchResults.isTouchingSpikeTile then
+        player.deathCount = (player.deathCount or 0) + 1
         player.x = map.playerStartX or 64 -- resets player to start pos for level
         player.y = map.playerStartY or 64
         player.xv = 0
@@ -154,7 +156,8 @@ function player.update(dt)
     player.xv = math.min(player.xv, player.horizontalTerminalVelo)
     player.xv = math.max(player.xv, -player.horizontalTerminalVelo)
     -- i hate printing tables in lua
-    print(player.x, player.y, "xv ".. player.xv, "yv ".. player.yv, "isOnGround ".. tostring(player.isOnGround), "isWallSliding ".. tostring(player.isWallSliding), "wallToLeft ".. tostring(player.wallToLeft), "wallToRight ".. tostring(player.wallToRight))
+    -- print(player.x, player.y, "xv ".. player.xv, "yv ".. player.yv, "isOnGround ".. tostring(player.isOnGround), "isWallSliding ".. tostring(player.isWallSliding), "wallToLeft ".. tostring(player.wallToLeft), "wallToRight ".. tostring(player.wallToRight))
+    -- that line cause crash on my computer
 end
 
 function player.draw()
@@ -185,5 +188,6 @@ function player.draw()
     end
     love.graphics.draw(spriteToDraw, player.x + offsetx, player.y, 0, sx, 1)
 end
+
 
 return player
