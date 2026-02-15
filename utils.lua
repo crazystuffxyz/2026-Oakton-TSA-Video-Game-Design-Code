@@ -2,6 +2,9 @@
 -- framework - love2d
 -- nobody bothers to reads the comments anyway
 local utils = {}
+function utils.isNaN(checkVal) -- might be useful
+    return checkVal ~= checkVal
+end
 function utils.scale(vector, factor) -- scales vector
     return {
         vector.x * factor, vector.y*factor
@@ -127,4 +130,3 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect) -- obj1 is intend
 end
 
 return utils
-
