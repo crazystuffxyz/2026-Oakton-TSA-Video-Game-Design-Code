@@ -1,5 +1,8 @@
 -- TELEPORTER GOIN UP!
 -- teleporter.lua
+
+-- we probably should have made a variable in each of the teles named isBuilt instead of relying on its position lol
+-- i see how this could cause issues with, like, last second teles on destruction
 local teleporter = {
     fps = 4,
     timeSinceLastFrame = 0,
@@ -133,4 +136,5 @@ teleporter.destroy = function()
     teleporter.exit.x = -100
     teleporter.exit.y = -100
 end
+
 return teleporter
