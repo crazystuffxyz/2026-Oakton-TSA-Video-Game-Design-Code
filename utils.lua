@@ -1,8 +1,8 @@
--- utils.lua (utils??? is that a reference to counter strike??!?!?)
+-- utils.lua
 -- framework - love2d
--- nobody bothers to reads the comments anyway
+
 local utils = {}
-function utils.isNaN(checkVal) -- might be useful
+function utils.isNaN(checkVal) -- Not used, might be useful
     return checkVal ~= checkVal
 end
 function utils.scale(vector, factor) -- scales vector
@@ -21,11 +21,11 @@ function utils.unitVector(vector) -- turns vector into a vector with magnitude 1
     if magnitude == 0 then return {x = 0, y = 0} end
     return {x = vector.x / magnitude, y = vector.y / magnitude}
 end
-function utils.angleOfVector(vector) -- gets angle of vector (idk why the comment said scale it, prolly VSCode autofill shenanigans)
+function utils.angleOfVector(vector) -- gets angle of vector
     return math.atan2(vector.y, vector.x)
 end
-function utils.checkTouch(obj1, obj2) -- basic AABB collision touch i learned from yt
-    if not (obj1.x and obj1.y) then                       -- whether i wanted to return that or that was a lookup error
+function utils.checkTouch(obj1, obj2) -- basic AABB collision
+    if not (obj1.x and obj1.y) then
         error("double check obj1 parameter") -- error() halts the program if not wrapped in pcall (powerful but less necessary in local games that dont have to deal with (inherently unreliable) data sending)
     end
     if not (obj2.x and obj2.y) then
@@ -72,7 +72,7 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect) -- obj1 is intend
                     height = tileDim,
                 }
                 if utils.checkTouch(obj1, winTile) then
-                    returnTable.isTouchingWinTile = true -- we only want it to do something if PLAYER touches it, not projectiles
+                    returnTable.isTouchingWinTile = true -- we only want it to do something if player touches it, not projectiles
                 end
             end
             if map[row][col] ~= 1 and map[row][col] ~= 6 and map[row][col] ~= 8 then -- if not air or win tile or spike tile
@@ -130,3 +130,4 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect) -- obj1 is intend
 end
 
 return utils
+
