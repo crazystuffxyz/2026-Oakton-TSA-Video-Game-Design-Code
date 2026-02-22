@@ -23,7 +23,7 @@ local utils = require("utils")
 local player = require("player")
 local map = require("map")
 local teleporter = require("teleporter")
-local hitspots = {} -- for debug drawing where projectiles hit
+pulsedevice.hitspots = {} -- for debug drawing where projectiles hit
 -- m1 to launch btw
 -- literally soldiers rocket jumping from tf2, replaces jumping in this game
 -- player can control direction when launched, but not speed (not final) - note: they can now :)
@@ -85,7 +85,7 @@ function pulsedevice.update(dt)
             player.xv = player.xv + unitVector.x * launchStrength * projectile.holdTime * 3-- just because
             player.yv = player.yv + unitVector.y * launchStrength * projectile.holdTime * 3.5 -- make it stronger vertically to counteract gravity better
             --remove
-            table.insert(hitspots, {x = projectile.x, y = projectile.y})
+            table.insert(pulsedevice.hitspots, {x = projectile.x, y = projectile.y})
             table.remove(pulsedevice.projectiles, i)
             pulsedevice.lastBlastEvent = 0
         end
@@ -95,9 +95,17 @@ function pulsedevice.draw()
     love.graphics.setColor(1, 1, 1)
     love.graphics.rectangle("line", player.x + 18, player.y, 6, 20, -1) -- charge bar frame, just a visual indicator of how long u held it
     love.graphics.rectangle("fill", player.x + 18, player.y, 6, 20 * (pulsedevice.holdTime / pulsedevice.maxHoldTime), -1) -- charge bar fill
-    --draw the pulse device translucent for testing:
-    love.graphics.setColor(1, 1, 1, 0.5) -- set translucent
-    love.graphics.draw(pulsedevice.pulseDeviceSprites[1], player.x, player.y)
+    -- the pulse device shall point to ze cursour!
+    local mousex, mousey = love.mouse.getPosition()
+    local scale = (scaleScreen or 1)
+    mousex = mousex / scale
+    mousey = mousey / scale
+    local playerCenterX = player.x + player.width / 2
+    local playerCenterY = player.y + player.height / 2
+    local vector = utils.vector({x = playerCenterX, y = playerCenterY}, {x = mousex, y = mousey})
+    local angle = utils.angleOfVector(vector)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.draw(pulsedevice.pulseDeviceSprites[1], playerCenterX, playerCenterY, angle, .5, .5, pulsedevice.pulseDeviceSprites[1]:getWidth()/2, pulsedevice.pulseDeviceSprites[1]:getHeight()/2)
     love.graphics.setColor(1, 1, 1, 1) -- reset
     --draw the projectiles:
     for i, projectile in ipairs(pulsedevice.projectiles) do
@@ -106,11 +114,20 @@ function pulsedevice.draw()
         -- api for love.graphics.draw(image, x, y, r, sx, sy, ox, oy, kx, ky)
     end
     -- draw rectangle at hitspots for debug
-    for i, hitspot in ipairs(hitspots) do
+    for i, hitspot in ipairs(pulsedevice.hitspots) do
         love.graphics.setColor(1, 0, 0)
         love.graphics.rectangle("fill", hitspot.x - 1, hitspot.y - 1, 2, 2)
     end
     love.graphics.setColor(1, 1, 1)
+end
+
+function pulsedevice.reset()
+    pulsedevice.projectiles = {}
+    pulsedevice.hitspots = {}
+    pulsedevice.onCooldown = false
+    pulsedevice.timeOfLastUse = 0
+    pulsedevice.holdTime = 0
+    pulsedevice.lastBlastEvent = 999
 end
 
 return pulsedevice
