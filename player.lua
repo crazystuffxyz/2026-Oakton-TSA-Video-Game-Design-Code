@@ -18,12 +18,14 @@ local player = {
     wallToRight = false,
     accel = 256,
     horizontalTerminalVelo = 120,
-    verticalTerminalVelo = 200,
+    verticalTerminalVelo = 1200,
     alive = true,
+    jumpInput = false,
+    jumpPower = 1200,
     sprites = {
-        love.graphics.newImage("assets/player.png"), -- idle
-        love.graphics.newImage("assets/runframe1.png"), -- runframe 1
-        love.graphics.newImage("assets/runframe2.png"), -- runframe 2
+        (function() local img = love.graphics.newImage("assets/player.png"); img:setFilter("nearest", "nearest"); return img end)(), -- idle
+        (function() local img = love.graphics.newImage("assets/runframe1.png"); img:setFilter("nearest", "nearest"); return img end)(), -- runframe 1
+        (function() local img = love.graphics.newImage("assets/runframe2.png"); img:setFilter("nearest", "nearest"); return img end)(), -- runframe 2
     },
     lastClipEvent = 1,
     blasting = false, -- temporarily ignores terminalvelos
@@ -37,11 +39,15 @@ local utils = require("utils")
 local map = require("map")
 function player.load()
     love.window.setTitle("TSA PROJECT: Pulse Man")
-    love.graphics.setDefaultFilter("nearest", "nearest") -- necessary for pixel art to not be blurry
-    -- not sure if this applies to all sprites or just the ones in this file
+    -- setDefaultFilter handled globally in main.lua
 end
 
 function player.update(dt)
+    if love.keyboard.isDown("w") then
+        player.jumpInput = true
+    else
+        player.jumpInput = false
+    end
     if player.blasting then
         player.timeSinceBlast = player.timeSinceBlast + dt
         player.horizontalTerminalVelo = player.blastHorizontalTerminalVelo
@@ -63,7 +69,9 @@ function player.update(dt)
     checkTouchResultsY = utils.checkTouchWithTileMap(player, map, "y") -- fix y
     if checkTouchResultsY.headHitting or checkTouchResultsY.isOnGround then
         player.blasting = false
-        player.yv = 0
+    end
+    if player.jumpInput and checkTouchResultsY.isOnGround then
+        player.yv = -player.jumpPower
     end
     if player.headHitting then
         if player.yv ~= 0 then
@@ -84,10 +92,17 @@ function player.update(dt)
     teleporter.teleportCheck(player) -- attempt teleportation
     local checkTouchResults = utils.checkTouchWithTileMap(player, map, "y")
     if checkTouchResults.isTouchingWinTile then
+        teleporter.destroy()
+        local puldev = package.loaded["pulsedevice"]
+        if puldev and puldev.reset then
+            puldev.reset()
+        end
+
         print("winned level" .. tostring(map.metadata.currentLevel))
         map.metadata.currentLevel = map.metadata.currentLevel + 1
+
         for i = 1, #map.levels[map.metadata.currentLevel] do
-            map[i] = map.levels[map.metadata.currentLevel][i] -- so it doesnt affect metadata... i should have put the map in its own table
+            map.data[i] = map.levels[map.metadata.currentLevel][i] -- so it doesnt affect metadata... i should have put the map in its own table
                                                               -- but its far too tedious to chnge now, maybe if we have time
         end
         map.playerStartX = map.levels[map.metadata.currentLevel].playerStartX or 64
@@ -111,7 +126,7 @@ function player.update(dt)
     end
     if player.isOnGround then
         player.yv = 0 
-    else
+    end
     if player.wallToLeft then
         player.xv = math.min(player.xv, 0)
     end
@@ -120,7 +135,6 @@ function player.update(dt)
     end
     if not player.isOnGround then -- only apply gravity if not on ground, or else jittering due to overlap adjustment
         player.yv = math.min(player.yv + player.gravityStrength * dt, player.verticalTerminalVelo)
-    end
     end
     if player.isWallSliding then
         player.yv = math.min(player.yv, player.gravityStrength / 2) -- yo i figured out how op math.min is :)
@@ -188,6 +202,5 @@ function player.draw()
     end
     love.graphics.draw(spriteToDraw, player.x + offsetx, player.y, 0, sx, 1)
 end
-
 
 return player
