@@ -16,7 +16,8 @@ map.sprites = {
     [2] = love.graphics.newImage("assets/_floatingtile_2.png"),
     [3] = love.graphics.newImage("assets/_floor_3.png"),
     [4] = love.graphics.newImage("assets/_ladder_4.png"),
-    [5] = love.graphics.newImage("assets/_wall_5.png"),[6] = love.graphics.newImage("assets/_levelend_6.png"),
+    [5] = love.graphics.newImage("assets/_wall_5.png"),
+    [6] = love.graphics.newImage("assets/_levelend_6.png"),
     [7] = love.graphics.newImage("assets/_barrier_7.png"),
     [8] = love.graphics.newImage("assets/_ze_spike_8.png"),
 }
@@ -336,5 +337,6 @@ function map.draw()
         end
     end
 end
+
 
 return map
