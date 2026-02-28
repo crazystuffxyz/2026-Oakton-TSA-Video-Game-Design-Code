@@ -22,6 +22,7 @@ local player = {
     coyoteTime = 0,
     jumpPower = 320,
     teleportCooldown = 0,
+    stunTimer = 0,
     scaleX = 1,
     scaleY = 1,
     wallJumpLock = 0,
@@ -33,6 +34,7 @@ local player = {
     blasting = false, 
     timeSinceBlast = 0,
     deathCount = 0,
+    gems = 0,
 }
 for _, s in ipairs(player.sprites) do s:setFilter("nearest","nearest") end
 
@@ -50,6 +52,17 @@ function player.startSquash(x, y)
 end
 
 function player.update(dt)
+    if player.stunTimer > 0 then
+        player.stunTimer = player.stunTimer - dt
+    end
+    local canMove = (player.stunTimer <= 0)
+
+    -- Reset Character Check
+    if love.keyboard.isDown("r") then
+        player.die()
+        return
+    end
+
     -- Visual Squash Return
     player.scaleX = utils.isNaN(player.scaleX) and 1 or player.scaleX
     player.scaleY = utils.isNaN(player.scaleY) and 1 or player.scaleY
@@ -64,7 +77,7 @@ function player.update(dt)
     player.wallJumpLock = math.max(0, player.wallJumpLock - dt)
 
     -- Input
-    if love.keyboard.isDown("w") or love.keyboard.isDown("space") then
+    if canMove and (love.keyboard.isDown("w") or love.keyboard.isDown("space")) then
         player.jumpInput = true
     else
         player.jumpInput = false
@@ -89,10 +102,35 @@ function player.update(dt)
         end
     end
 
+    -- General Overlap Verification for triggers (Ladder, Gem, Win)
+    local overlapRes = utils.checkTouchWithTileMap(player, map, "none")
+    
+    -- Process Gems
+    for _, g in ipairs(overlapRes.hitGems) do
+        if map.data[g.row][g.col] == 10 then
+            map.data[g.row][g.col] = 1 -- collect
+            map.levelGemsCollected = map.levelGemsCollected + 1
+            player.gems = player.gems + 1
+            fx.sparkle((g.col-1)*16 + 8, (g.row-1)*16 + 8, {0, 1, 0.5})
+        end
+    end
+
+    -- Ladder Logic Update
+    if overlapRes.isTouchingLadder then
+        if canMove and (love.keyboard.isDown("w") or love.keyboard.isDown("s")) then
+            player.isOnLadder = true
+            player.blasting = false
+        end
+    else
+        player.isOnLadder = false
+    end
+
     -- X Movement
     local moveDir = 0
-    if love.keyboard.isDown("d") then moveDir = 1 end
-    if love.keyboard.isDown("a") then moveDir = -1 end
+    if canMove then
+        if love.keyboard.isDown("d") then moveDir = 1 end
+        if love.keyboard.isDown("a") then moveDir = -1 end
+    end
 
     local currentAccel = player.isOnGround and player.accel or player.airAccel
     
@@ -128,9 +166,24 @@ function player.update(dt)
     local maxRun = player.blasting and 800 or 150
     player.xv = math.max(-maxRun, math.min(player.xv, maxRun))
     
-    -- X Collision
-    player.x = player.x + player.xv * dt
-    local checkX = utils.checkTouchWithTileMap(player, map, "x")
+    -- X Collision Stepping
+    local stepsX = math.max(1, math.ceil(math.abs(player.xv * dt) / 5))
+    local stepX = (player.xv * dt) / stepsX
+    local checkX = {wallToLeft = false, wallToRight = false}
+    
+    for i=1, stepsX do
+        player.x = player.x + stepX
+        local res = utils.checkTouchWithTileMap(player, map, "x")
+        
+        if res.touchingTile then
+            if res.wallToLeft then checkX.wallToLeft = true end
+            if res.wallToRight then checkX.wallToRight = true end
+            if res.wallToLeft or res.wallToRight then
+                player.xv = 0
+            end
+            break
+        end
+    end
     
     -- Wall Sliding / Jump
     local touchingWall = checkX.wallToLeft or checkX.wallToRight
@@ -150,32 +203,41 @@ function player.update(dt)
     -- Physics Y
     if player.isOnLadder then
         player.yv = 0
-        if love.keyboard.isDown("w") then player.yv = -100 end
-        if love.keyboard.isDown("s") then player.yv = 100 end
+        if canMove then
+            if love.keyboard.isDown("w") then player.yv = -150 end
+            if love.keyboard.isDown("s") then player.yv = 150 end
+        end
         if justPressedJump then
             player.isOnLadder = false
-            player.yv = -200
+            player.yv = -player.jumpPower
         end
     else
         player.yv = player.yv + player.gravityStrength * dt
     end
     
     player.yv = math.min(player.yv, maxFall)
-    player.y = player.y + player.yv * dt
     
-    local checkY = utils.checkTouchWithTileMap(player, map, "y")
+    -- Y Collision Stepping
+    local stepsY = math.max(1, math.ceil(math.abs(player.yv * dt) / 5))
+    local stepY = (player.yv * dt) / stepsY
+    local checkY = {isOnGround = false, headHitting = false}
+    
+    for i=1, stepsY do
+        player.y = player.y + stepY
+        local res = utils.checkTouchWithTileMap(player, map, "y")
+        
+        if res.touchingTile then
+            if res.isOnGround then checkY.isOnGround = true end
+            if res.headHitting then checkY.headHitting = true end
+            if res.isOnGround or res.headHitting then
+                player.yv = 0
+            end
+            break
+        end
+    end
+    
     player.isOnGround = checkY.isOnGround
     player.headHitting = checkY.headHitting
-    
-    -- Ladder Check
-    if checkY.isTouchingLadder then
-        if love.keyboard.isDown("w") or love.keyboard.isDown("s") then
-            player.isOnLadder = true
-            player.blasting = false
-        end
-    else
-        player.isOnLadder = false
-    end
     
     if player.isOnGround then
         player.coyoteTime = 0.1
@@ -200,15 +262,18 @@ function player.update(dt)
         fx.dust(player.x + player.width/2, player.y + player.height)
     end
 
-    -- Teleport & Level End
+    -- Teleport Check
     teleporter.teleportCheck(player) 
     
-    if checkY.isTouchingWinTile or checkX.isTouchingWinTile then
-        map.nextLevel(player)
+    -- Level End / Win condition
+    if overlapRes.isTouchingWinTile then
+        if map.levelGemsCollected >= map.totalGems then
+            map.nextLevel(player)
+        end
     end
 
-    -- Spikes / Void
-    if checkY.isTouchingSpikeTile or checkX.isTouchingSpikeTile or player.y > map.height * 16 + 100 then
+    -- Spikes / Void Death
+    if overlapRes.isTouchingSpikeTile or player.y > map.height * 16 + 100 then
         player.die()
     end
 end
@@ -221,6 +286,7 @@ function player.die()
     player.yv = 0
     player.blasting = false
     player.isOnLadder = false
+    player.stunTimer = 0
     teleporter.destroy()
     
     local pd = package.loaded["pulsedevice"]
@@ -230,7 +296,11 @@ function player.die()
 end
 
 function player.draw()
-    love.graphics.setColor(1, 1, 1)
+    if player.stunTimer > 0 then
+        love.graphics.setColor(1, 0.3, 0.3)
+    else
+        love.graphics.setColor(1, 1, 1)
+    end
     
     local spriteToDraw = player.sprites[1]
     if player.isRunning and player.isOnGround then
@@ -252,6 +322,8 @@ function player.draw()
     local dir = player.isFacingLeft and -1 or 1
     
     love.graphics.draw(spriteToDraw, xx, yy, 0, dir * player.scaleX, player.scaleY, spriteToDraw:getWidth()/2, spriteToDraw:getHeight()/2)
+    
+    love.graphics.setColor(1, 1, 1)
 end
 
 return player

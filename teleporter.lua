@@ -22,8 +22,9 @@ function teleporter.load()
 end
 
 function teleporter.update(dt, player)
+    local canMove = not player.stunTimer or player.stunTimer <= 0
     -- Input
-    if love.keyboard.isDown("q") and not teleporter.antiHold then
+    if canMove and love.keyboard.isDown("q") and not teleporter.antiHold then
         teleporter.entrance.x = player.x 
         teleporter.entrance.y = player.y
         teleporter.antiHold = true
@@ -31,7 +32,7 @@ function teleporter.update(dt, player)
         teleporter.entrance.buildStartTime = 0
         fx.spawn(player.x, player.y, {0,1,1}, 10, 50)
     end
-    if love.keyboard.isDown("e") and not teleporter.antiHold then
+    if canMove and love.keyboard.isDown("e") and not teleporter.antiHold then
         teleporter.exit.x = player.x
         teleporter.exit.y = player.y
         teleporter.antiHold = true
@@ -80,7 +81,7 @@ function teleporter.teleportCheck(subject)
     if utils.checkTouch(subject, teleporter.entrance) then
         subject.x = teleporter.exit.x
         subject.y = teleporter.exit.y
-        subject.teleportCooldown = 0.3 
+        subject.teleportCooldown = 0.5 
         fx.spawn(subject.x, subject.y, {0, 1, 1}, 20, 100)
         fx.shake(3, 0.1)
     end
@@ -89,7 +90,7 @@ function teleporter.teleportCheck(subject)
     if utils.checkTouch(subject, teleporter.exit) then
         subject.x = teleporter.entrance.x
         subject.y = teleporter.entrance.y
-        subject.teleportCooldown = 0.3
+        subject.teleportCooldown = 0.5
         fx.spawn(subject.x, subject.y, {1, 0.5, 0}, 20, 100)
         fx.shake(3, 0.1)
     end

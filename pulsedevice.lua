@@ -22,6 +22,7 @@ local map = require("map")
 local teleporter = require("teleporter")
 local fx = require("fx")
 local camera = require("camera")
+local burned = require("burned")
 
 pulsedevice.hitspots = {} 
 
@@ -40,46 +41,52 @@ function pulsedevice.update(dt)
     local playerCenterX = player.x + player.width / 2
     local playerCenterY = player.y + player.height / 2
     
-    -- Charging
-    if love.mouse.isDown(1) and not pulsedevice.onCooldown then
-        pulsedevice.holdTime = math.max(.2, math.min(pulsedevice.holdTime + dt, pulsedevice.maxHoldTime))
-        player.isCharging = true 
-        player.startSquash(1 + (pulsedevice.holdTime * 0.1), 1 - (pulsedevice.holdTime * 0.1))
-    else
-        player.isCharging = false
-    end
-    
-    -- Fire
-    if not love.mouse.isDown(1) and pulsedevice.holdTime > 0 then
-        local vector = utils.vector({x = playerCenterX, y = playerCenterY}, {x = mousex, y = mousey})
-        local unitVector = utils.unitVector(vector)
-        local angle = utils.angleOfVector(vector)
-        
-        local chargeFactor = math.max(1, pulsedevice.holdTime * 2) 
-        local projSpeed = pulsedevice.speed
-        local projSize = 4 + (pulsedevice.holdTime * 8)
-        
-        local projectile = {
-            x = playerCenterX,
-            y = playerCenterY,
-            xv = unitVector.x * projSpeed,
-            yv = unitVector.y * projSpeed,
-            angle = angle,
-            width = projSize,
-            height = projSize,
-            holdTime = pulsedevice.holdTime,
-            teleportCooldown = 0
-        }
-        table.insert(pulsedevice.projectiles, projectile)
-        pulsedevice.onCooldown = true
-        pulsedevice.timeOfLastUse = 0
+    local canMove = not player.stunTimer or player.stunTimer <= 0
+    if not canMove then
         pulsedevice.holdTime = 0
+        player.isCharging = false
+    else
+        -- Charging
+        if love.mouse.isDown(1) and not pulsedevice.onCooldown then
+            pulsedevice.holdTime = math.max(.2, math.min(pulsedevice.holdTime + dt, pulsedevice.maxHoldTime))
+            player.isCharging = true 
+            player.startSquash(1 + (pulsedevice.holdTime * 0.1), 1 - (pulsedevice.holdTime * 0.1))
+        else
+            player.isCharging = false
+        end
         
-        -- Recoil slightly
-        player.xv = player.xv - unitVector.x * 60
-        player.yv = player.yv - unitVector.y * 60
-        
-        fx.shake(1, 0.1)
+        -- Fire
+        if not love.mouse.isDown(1) and pulsedevice.holdTime > 0 then
+            local vector = utils.vector({x = playerCenterX, y = playerCenterY}, {x = mousex, y = mousey})
+            local unitVector = utils.unitVector(vector)
+            local angle = utils.angleOfVector(vector)
+            
+            local chargeFactor = math.max(1, pulsedevice.holdTime * 2) 
+            local projSpeed = pulsedevice.speed
+            local projSize = 4 + (pulsedevice.holdTime * 8)
+            
+            local projectile = {
+                x = playerCenterX,
+                y = playerCenterY,
+                xv = unitVector.x * projSpeed,
+                yv = unitVector.y * projSpeed,
+                angle = angle,
+                width = projSize,
+                height = projSize,
+                holdTime = pulsedevice.holdTime,
+                teleportCooldown = 0
+            }
+            table.insert(pulsedevice.projectiles, projectile)
+            pulsedevice.onCooldown = true
+            pulsedevice.timeOfLastUse = 0
+            pulsedevice.holdTime = 0
+            
+            -- Recoil slightly
+            player.xv = player.xv - unitVector.x * 60
+            player.yv = player.yv - unitVector.y * 60
+            
+            fx.shake(1, 0.1)
+        end
     end
     
     pulsedevice.timeOfLastUse = pulsedevice.timeOfLastUse + dt
@@ -96,8 +103,26 @@ function pulsedevice.update(dt)
         
         teleporter.teleportCheck(projectile) 
         
-        projectile.x = projectile.x + projectile.xv * dt
-        projectile.y = projectile.y + projectile.yv * dt
+        -- Stepped movement to prevent glitching through walls
+        local moveX = projectile.xv * dt
+        local moveY = projectile.yv * dt
+        local dist = math.sqrt(moveX^2 + moveY^2)
+        local steps = math.max(1, math.ceil(dist / 4))
+        
+        local hit = false
+        local finalTouch = {hitTiles = {}}
+        
+        for step = 1, steps do
+            projectile.x = projectile.x + moveX / steps
+            projectile.y = projectile.y + moveY / steps
+            local res = utils.checkTouchWithTileMap(projectile, map, "none")
+            
+            if res.touchingTile then
+                hit = true
+                for _, ht in ipairs(res.hitTiles) do table.insert(finalTouch.hitTiles, ht) end
+                break
+            end
+        end
         
         -- Trail effect
         fx.trail(projectile.x, projectile.y, {1, 0.5 + projectile.holdTime*0.5, 0}, projectile.width * 0.8)
@@ -106,27 +131,37 @@ function pulsedevice.update(dt)
             fx.sparkle(projectile.x, projectile.y, {1, 0.5, 0})
         end
 
-        local touch = utils.checkTouchWithTileMap(projectile, map)
-        if touch.touchingTile then
+        if hit then
+            -- Handle Breakable Walls
+            for _, t in ipairs(finalTouch.hitTiles) do
+                if t.id == 9 then
+                    map.data[t.row][t.col] = 1 -- Replace with air
+                    fx.spawn((t.col-1)*16 + 8, (t.row-1)*16 + 8, {0.6, 0.4, 0.2}, 15, 150)
+                    fx.shake(2, 0.1)
+                end
+            end
+
             player.blasting = true
             local vector = utils.vector({x = projectile.x, y = projectile.y}, {x = playerCenterX, y = playerCenterY})
-            local dist = utils.magnitude(vector)
+            local pdist = utils.magnitude(vector)
             
-            -- Knockback physics
-            local launchStrength = 400 + (projectile.holdTime * 800)
-            local falloff = math.max(0.1, 1 - (dist / 180)) 
+            -- Knockback physics (Nerfed to prevent insane floor jump)
+            local launchStrength = 300 + (projectile.holdTime * 500)
+            local falloff = math.max(0.1, 1 - (pdist / 180)) 
             
             local unitVector = utils.unitVector(vector)
             
             player.xv = player.xv + unitVector.x * launchStrength * falloff
-            player.yv = player.yv + unitVector.y * launchStrength * falloff * 1.3 -- Vertical bias
+            player.yv = player.yv + unitVector.y * launchStrength * falloff * 1.2 -- Vertical bias
             
-            -- Cap velocity
-            local maxV = 1000
+            -- Cap velocity strictly to stop insane cheese
+            local maxV = 800
+            local minVy = -550 -- Don't let them rocket to ceiling infinitely
+            
             if player.xv > maxV then player.xv = maxV end
             if player.xv < -maxV then player.xv = -maxV end
             if player.yv > maxV then player.yv = maxV end
-            if player.yv < -maxV then player.yv = -maxV end
+            if player.yv < minVy then player.yv = minVy end
 
             player.startSquash(0.5, 1.5) 
 
@@ -159,7 +194,7 @@ function pulsedevice.draw()
     local vector = utils.vector({x = playerCenterX, y = playerCenterY}, {x = mousex, y = mousey})
     local angle = utils.angleOfVector(vector)
 
-    if not pulsedevice.onCooldown then
+    if not pulsedevice.onCooldown and (not player.stunTimer or player.stunTimer <= 0) then
         -- Trajectory
         local alpha = 0.3 + (pulsedevice.holdTime / pulsedevice.maxHoldTime) * 0.7
         love.graphics.setColor(1, 0.2, 0.2, alpha)

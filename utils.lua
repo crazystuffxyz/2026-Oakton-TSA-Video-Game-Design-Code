@@ -49,7 +49,9 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect)
         isTouchingWinTile = false,
         isTouchingSpikeTile = false,
         isTouchingLadder = false,
-        isWallSliding = false 
+        isWallSliding = false,
+        hitTiles = {},
+        hitGems = {}
     }
     
     local tileDim = map.metadata.tileDimensions
@@ -76,7 +78,7 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect)
                 height = tileDim
             }
 
-            if tileID == 8 then -- Spike
+            if tileID == 8 or tileID == 11 or tileID == 12 or tileID == 13 then -- Spikes
                 -- Shrink hitbox of spike slightly to be forgiving
                 local spikeHitbox = {x=tile.x+4, y=tile.y+4, width=8, height=8}
                 if utils.checkTouch(obj1, spikeHitbox) then
@@ -87,15 +89,21 @@ function utils.checkTouchWithTileMap(obj1, map, axisToCorrect)
                     returnTable.isTouchingWinTile = true
                 end
             elseif tileID == 4 then -- Ladder
-                if utils.checkTouch(obj1, tile) then
+                local ladHitbox = {x=tile.x+4, y=tile.y, width=8, height=16}
+                if utils.checkTouch(obj1, ladHitbox) then
                     returnTable.isTouchingLadder = true
+                end
+            elseif tileID == 10 then -- Gem
+                if utils.checkTouch(obj1, tile) then
+                    table.insert(returnTable.hitGems, {row = row, col = col})
                 end
             end
             
-            -- Solid blocks: 2 (Floating), 3 (Floor), 5 (Wall), 7 (Barrier)
-            if tileID == 2 or tileID == 3 or tileID == 5 or tileID == 7 then
+            -- Solid blocks: 2 (Floating), 3 (Floor), 5 (Wall), 7 (Barrier), 9 (Breakable)
+            if tileID == 2 or tileID == 3 or tileID == 5 or tileID == 7 or tileID == 9 then
                  if utils.checkTouch(obj1, tile) then
                     returnTable.touchingTile = true
+                    table.insert(returnTable.hitTiles, {row = row, col = col, id = tileID})
                     
                     local overlapX, overlapY
                     local pCenterX = obj1.x + obj1.width/2
