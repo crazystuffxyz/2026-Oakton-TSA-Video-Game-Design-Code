@@ -18,7 +18,7 @@ gameState = "menu" -- "menu", "tutorial", "playing", "ending", "gameover"
 
 function love.load()
     love.window.setMode(1024, 640, {resizable = true})
-    love.window.setTitle("Pulse Man - RECHARGED")
+    love.window.setTitle("Mobility Jumper")
     
     -- Load Assets safely
     font = love.graphics.newFont("assets/pixelify_font/PixelifySans-VariableFont_wght.ttf", 32)
