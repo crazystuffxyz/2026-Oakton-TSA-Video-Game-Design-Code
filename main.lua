@@ -171,7 +171,7 @@ function love.draw()
         if font and fontSmall then
             love.graphics.setFont(font)
             love.graphics.setColor(1, 1, 1)
-            local title = "Pulse Man - RECHARGED"
+            local title = "Mobility Jumper"
             local titleW = font:getWidth(title)
             love.graphics.print(title, love.graphics.getWidth()/2 - titleW/2, love.graphics.getHeight()/3)
             
